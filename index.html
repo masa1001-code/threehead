@@ -9,7 +9,7 @@
     <!-- Icon Library -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         
         body {
             font-family: 'Inter', sans-serif;
@@ -57,6 +57,19 @@
         /* Image Slider Transitions */
         .slider-img {
             transition: opacity 0.3s ease-in-out;
+        }
+
+        /* Fullscreen Overlay Styles */
+        #fullscreen-overlay {
+            transition: all 0.3s ease-in-out;
+        }
+        #fullscreen-overlay.hidden {
+            display: none;
+            opacity: 0;
+        }
+        #fullscreen-overlay.flex {
+            display: flex;
+            opacity: 1;
         }
     </style>
 </head>
@@ -120,8 +133,13 @@
                 </div>
 
                 <!-- Main Image Container -->
-                <div id="modal-image-display" class="w-full h-full flex items-center justify-center">
+                <div id="modal-image-display" class="w-full h-full flex items-center justify-center cursor-zoom-in relative">
                     <!-- Image Injected here -->
+                </div>
+
+                <!-- Zoom Hint Overlay -->
+                <div class="absolute bottom-16 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 text-white text-[10px] px-3 py-1 rounded-full backdrop-blur-sm flex items-center gap-1">
+                    <i data-lucide="search" class="w-3 h-3"></i> Klik untuk melihat penuh
                 </div>
 
                 <!-- Image Dots -->
@@ -163,6 +181,17 @@
         </div>
     </div>
 
+    <!-- [FULLSCREEN LIGHTBOX OVERLAY] -->
+    <div id="fullscreen-overlay" class="fixed inset-0 z-[200] bg-black/95 hidden items-center justify-center p-4 md:p-12 animate-in fade-in duration-300" onclick="closeFullscreen()">
+        <button class="absolute top-6 right-6 p-3 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-all z-50">
+            <i data-lucide="x" class="w-8 h-8"></i>
+        </button>
+        <div class="relative w-full h-full flex items-center justify-center overflow-hidden">
+            <img id="fullscreen-image" src="" alt="View Penuh" class="max-w-full max-h-full object-contain rounded shadow-2xl animate-in zoom-in duration-500" onclick="event.stopPropagation()">
+        </div>
+        <p class="absolute bottom-6 text-white/50 text-xs tracking-widest uppercase pointer-events-none">Klik di mana saja untuk menutup</p>
+    </div>
+
     <!-- [CART DRAWER] -->
     <div id="cart-drawer" class="fixed bottom-8 right-8 z-50">
         <button onclick="toggleCart()" class="bg-black text-white p-5 rounded-full shadow-2xl relative hover:scale-110 active:scale-90 transition-all">
@@ -193,7 +222,7 @@
     </div>
 
     <!-- [CUSTOM TOAST NOTIFICATION] -->
-    <div id="toast" class="fixed top-8 left-1/2 -translate-x-1/2 z-[200] bg-zinc-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-[-20px] transition-all duration-300 pointer-events-none">
+    <div id="toast" class="fixed top-8 left-1/2 -translate-x-1/2 z-[300] bg-zinc-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-[-20px] transition-all duration-300 pointer-events-none">
         <i data-lucide="info" class="w-5 h-5 text-yellow-400" id="toast-icon"></i>
         <span id="toast-message" class="font-bold text-sm tracking-wide">Pesan di sini</span>
     </div>
@@ -206,14 +235,14 @@
     <script>
         // DATA PRODUK
         const products = [
-            { id: 1, name: "Premium Dad Hat", category: "topi", price: 150000, stock: -1, description: "Topi dengan material katun twill berkualitas tinggi dan strap yang bisa disesuaikan.", images: ["https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=400"] },
+            { id: 1, name: "Premium Dad Hat", category: "topi", price: 150000, stock: -1, description: "Topi dengan material katun twill berkualitas tinggi dan strap yang bisa disesuaikan.", images: ["https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=800"] },
             { id: 2, name: "New Arrivals | Premium", category: "shirt", price: 99000, stock: 12, description: "Kaos potongan oversized dengan bahan katun 24s yang tebal namun tetap adem.", images: ["https://ik.imagekit.io/kmeznn0g9/44.jpg","https://ik.imagekit.io/kmeznn0g9/01.jpg","https://ik.imagekit.io/kmeznn0g9/55.jpg" ] },
-            { id: 3, name: "Minimalist Windbreaker", category: "shirt", price: 550000, stock: -1, description: "Jaket tahan angin dengan desain ramping dan material water-repellent.", images: ["https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400"] },
+            { id: 3, name: "Minimalist Windbreaker", category: "shirt", price: 550000, stock: -1, description: "Jaket tahan angin dengan desain ramping dan material water-repellent.", images: ["https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=800"] },
             { id: 4, name: "Arsip Produk (Hidden)", category: "shirt", price: 0, stock: -1, description: "Ini tidak akan muncul.", images: [""] },
             { id: 5, name: "Produk Non-Aktif (Hidden)", category: "shirt", price: 0, stock: -1, description: "Ini tidak akan muncul juga.", images: [""] },
-            { id: 6, name: "Relaxed Chino Pants", category: "celana", price: 450000, stock: -1, description: "Celana chino dengan potongan rileks.", images: ["https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=400"] },
-            { id: 7, name: "Canvas Daily Tote", category: "tas", price: 120000, stock: -1, description: "Tas kanvas kuat.", images: ["https://images.unsplash.com/photo-1544816153-155f308df8b1?w=400"] },
-            { id: 8, name: "Classic White Sneakers", category: "sepatu", price: 850000, stock: -1, description: "Sepatu kulit putih klasik.", images: ["https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=400"] }
+            { id: 6, name: "Relaxed Chino Pants", category: "celana", price: 450000, stock: -1, description: "Celana chino dengan potongan rileks.", images: ["https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=800"] },
+            { id: 7, name: "Canvas Daily Tote", category: "tas", price: 120000, stock: -1, description: "Tas kanvas kuat.", images: ["https://images.unsplash.com/photo-1544816153-155f308df8b1?w=800"] },
+            { id: 8, name: "Classic White Sneakers", category: "sepatu", price: 850000, stock: -1, description: "Sepatu kulit putih klasik.", images: ["https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=800"] }
         ];
 
         let cart = [];
@@ -221,7 +250,6 @@
         let activeImageIndex = 0;
         let modalQty = 1;
         
-        // Touch Variables for Swiping
         let touchStartX = 0;
         let touchEndX = 0;
 
@@ -272,7 +300,7 @@
                     <div class="relative w-full aspect-square rounded-[1.5rem] overflow-hidden mb-6 bg-zinc-50 cursor-pointer" onclick="openModal(${p.id})">
                         <img id="img-${p.id}" src="${p.images[0]}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${isOutOfStock ? 'grayscale' : ''}" alt="${p.name}">
                         <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                            <span class="bg-white text-black px-4 py-2 rounded-full text-xs font-bold opacity-0 group-hover:opacity-100 transition-all transform translate-y-4 group-hover:translate-y-0 shadow-lg uppercase tracking-widest">Detail Cepat</span>
+                            <button class="bg-white text-black px-4 py-2 rounded-full text-xs font-bold opacity-0 group-hover:opacity-100 transition-all transform translate-y-4 group-hover:translate-y-0 shadow-lg uppercase tracking-widest">Detail Cepat</button>
                         </div>
                         ${isOutOfStock ? '<div class="absolute top-4 left-4 bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-full">HABIS</div>' : ''}
                     </div>
@@ -335,7 +363,6 @@
             document.body.style.overflow = 'hidden';
             lucide.createIcons();
 
-            // Set up Swipe Listeners
             const sliderArea = document.getElementById('modal-image-display').parentElement;
             sliderArea.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
             sliderArea.addEventListener('touchend', (e) => { 
@@ -352,20 +379,18 @@
             const nav = document.getElementById('slider-nav');
             const isOutOfStock = activeModalProduct.stock === 0;
 
-            // Show/Hide Nav Arrows if images > 1
             if (activeModalProduct.images.length > 1) {
                 nav.classList.remove('hidden');
             } else {
                 nav.classList.add('hidden');
             }
 
-            // Update Image
             display.innerHTML = `
                 <img src="${activeModalProduct.images[activeImageIndex]}" 
+                     onclick="openFullscreen('${activeModalProduct.images[activeImageIndex]}')"
                      class="max-h-72 md:max-h-[400px] object-contain rounded-xl shadow-lg slider-img ${isOutOfStock ? 'grayscale' : ''}">
             `;
 
-            // Update Dots
             dots.innerHTML = '';
             if (activeModalProduct.images.length > 1) {
                 activeModalProduct.images.forEach((_, idx) => {
@@ -374,6 +399,22 @@
                     dots.appendChild(dot);
                 });
             }
+        }
+
+        // FULLSCREEN LOGIC
+        function openFullscreen(url) {
+            const overlay = document.getElementById('fullscreen-overlay');
+            const img = document.getElementById('fullscreen-image');
+            img.src = url;
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        function closeFullscreen() {
+            const overlay = document.getElementById('fullscreen-overlay');
+            overlay.classList.remove('flex');
+            overlay.classList.add('hidden');
         }
 
         function nextImage() {
